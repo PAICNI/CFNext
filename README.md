@@ -366,7 +366,6 @@ Proxy-HK.SenflareLink.Kdns.fr,Proxy-TW.SenflareLink.Kdns.fr,Proxy-JP.SenflareLin
 ## 🐛 BUG 处理
 1. **Trojan 协议在 Mihomo/Clash Verge 中延迟失败/不可用的问题**
 2. 更换Mihomo内核下发的配置文件，新配置增加防DNS泄露；
-3. 根据现有代码，更新**特别鸣谢/调用 API 接口名单**
 
 
 ## 🚩 节点名称说明：
