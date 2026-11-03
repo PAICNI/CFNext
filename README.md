@@ -464,9 +464,8 @@ Proxy-HK.SenflareLink.Kdns.fr,Proxy-TW.SenflareLink.Kdns.fr,Proxy-JP.SenflareLin
 | 形态        | 文件名称                         | 部署目标        | 说明                                       |
 | --------- | ---------------------------- | ----------- | ---------------------------------------- |
 | 单文件·明文版   | `CFNext-明文版.js`       | Worker      | 面板 + 后端一体，源码可读，**仅供阅读 / 二次开发，不建议直接部署**   |
-| 单文件·混淆版   | `CFNext-混淆版.js`       | Worker      | 面板 + 后端一体，terser 混淆 + ASCII 化，**日常部署推荐** |
 | 单文件·小说混淆版 | `CFNext-小说混淆版.js`     | Worker      | 面板 + 后端一体，正文嵌入语料、占比约 66%，体积最大            |
-| 单文件·Pages | `CFNext-混淆Pages版.zip` | Pages（高级模式） | 单文件混淆版打包为 `_worker.js`，走 Pages 通道        |
+| 单文件·Pages | `CFNext-小说混淆Pages版.zip` | Pages（高级模式） | 单文件混淆版打包为 `_worker.js`，走 Pages 通道        |
 | 分离版·后端    | `CFNext-后端Worker版.js` | Worker      | 纯节点 / 订阅 / `/api/*`，**无面板、无登录**          |
 | 分离版·前端    | `CFNext-前端Pages版.zip` | Pages（高级模式） | 面板 UI + 登录 + 多后端管理 + 聚合下发                |
 
