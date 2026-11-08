@@ -3,6 +3,8 @@
 > 部署在 Cloudflare Workers / Pages 的代理订阅管理面板，单文件同时实现 VLESS / Trojan / XHTTP 多协议代理与图形化配置：`/UUID`（或自定义路径）进入面板，`/sub` 输出订阅；内置节点优选器、节点数量控制、轮询下发、ECH 加密、落地与出站代理及地区 / 运营商 / IP 版本多维筛选，并新增 **MASQUE / 家宽** 三种节点模式与**前后端分离**部署形态。部署即用，绑定 KV 后改完即生效。
 >
 > **[✈ Telegram 交流群](https://t.me/SZ_PAI)**
+> **[✈ Telegram 发布频道](https://t.me/PaiCNX)**
+> **[✨ CFNext专用优选器](https://github.com/PAICNI/CFScan)**  
 > **[📺️ YouTube 频道](https://www.youtube.com/@PAI_CN)**
 > **[▶️ 3.0 新版本部署教程](https://www.youtube.com/watch?v=CQ8zvWXkZzA)**
 > **[▶️ 2.0 Worker模式视频使用教程](https://youtu.be/1GCZgdGFsk0)**
@@ -16,6 +18,23 @@
   <summary>✨点击展开更新日志</summary>
 
 ## 版本号更新说明：大版本更新改动版本号第1位数字，小功能更新改动为第2位数字，小BUG修复改动为第3位数字。如当前版本：2.8.1 则为本项目第2个大版本，新增功能第8个版本，修复1个版本的BUG；
+---
+# 更新日志_V3.1.1
+
+✨ 新增功能
+- 家宽「VPN Gate 手写参数」新增「本地上传」，支持浏览器本地读取 .ovpn / .conf 文件（最大 2 MB），自动提取参数及内联证书，转换为兼容格式填入输入框。
+- 选择「本地上传」时，输入框已有内容时，可选择 覆盖、追加或取消**；追加自动分行，导入后自动预览并标记为未保存，点击「保存全部」后生效。
+- 新增手写格式：首行填写 **主机,端口,协议,地区**，随后直接粘贴原文件中从 `<ca>` 开始的完整内联证书内容，支持 `<ca>`、`<cert>`、`<key>`、`<tls-auth>`、`<tls-crypt>`；多组配置分别使用各自证书。
+- base64 名称前缀支持 **中文、英文字母和数字，长度 1–10 个字符**，例如 `日本1:`、`新加坡优选:`，兼容原有 `JP:`、`JP|`，并支持中文冒号。
+- 节点名称与地区代码独立保存，“日本1”等编号名称仍可识别为日本地区；未提供名称时保留原有默认命名。
+- 手写格式支持保留原文件的 `cipher / auth` 指令；原有 base64 及旧手写格式继续兼容。
+
+## 🐛 BUG 处理
+- 修复「试用并预览」将不带地区前缀的 base64 配置误当作证书正文跳过、提示“未解析到有效条目”的问题。
+- 修复多组手写配置的证书边界处理，避免跨组复用 CA、客户端证书或私钥；无效端口、协议及缺少 CA 的条目不作为有效节点下发。
+
+
+**VPN Gate 官网：https://www.vpngate.net/cn/
 
 ---
 
@@ -364,7 +383,6 @@ Proxy-HK.SenflareLink.Kdns.fr,Proxy-TW.SenflareLink.Kdns.fr,Proxy-JP.SenflareLin
 ## 🐛 BUG 处理
 1. **Trojan 协议在 Mihomo/Clash Verge 中延迟失败/不可用的问题**
 2. 更换Mihomo内核下发的配置文件，新配置增加防DNS泄露；
-3. 根据现有代码，更新**特别鸣谢/调用 API 接口名单**
 
 
 ## 🚩 节点名称说明：
@@ -430,7 +448,7 @@ Proxy-HK.SenflareLink.Kdns.fr,Proxy-TW.SenflareLink.Kdns.fr,Proxy-JP.SenflareLin
 
 | 项    | 内容                                                                                              |
 | ---- | ----------------------------------------------------------------------------------------------- |
-| 当前版本 | `3.0.3`                                                                                         |
+| 当前版本 | `3.1.1`                                                                                         |
 | 部署平台 | Cloudflare **Workers** / **Pages**                                                              |
 | 协议   | VLESS / Trojan / XHTTP / MASQUE / OpenVPN（家宽）                                  |
 | 订阅格式 | Clash（mihomo / Verge）、sing-box、Karing、v2rayN等                                                   |
@@ -462,9 +480,8 @@ Proxy-HK.SenflareLink.Kdns.fr,Proxy-TW.SenflareLink.Kdns.fr,Proxy-JP.SenflareLin
 | 形态        | 文件名称                         | 部署目标        | 说明                                       |
 | --------- | ---------------------------- | ----------- | ---------------------------------------- |
 | 单文件·明文版   | `CFNext-明文版.js`       | Worker      | 面板 + 后端一体，源码可读，**仅供阅读 / 二次开发，不建议直接部署**   |
-| 单文件·混淆版   | `CFNext-混淆版.js`       | Worker      | 面板 + 后端一体，terser 混淆 + ASCII 化，**日常部署推荐** |
 | 单文件·小说混淆版 | `CFNext-小说混淆版.js`     | Worker      | 面板 + 后端一体，正文嵌入语料、占比约 66%，体积最大            |
-| 单文件·Pages | `CFNext-混淆Pages版.zip` | Pages（高级模式） | 单文件混淆版打包为 `_worker.js`，走 Pages 通道        |
+| 单文件·Pages | `CFNext-小说混淆Pages版.zip` | Pages（高级模式） | 单文件混淆版打包为 `_worker.js`，走 Pages 通道        |
 | 分离版·后端    | `CFNext-后端Worker版.js` | Worker      | 纯节点 / 订阅 / `/api/*`，**无面板、无登录**          |
 | 分离版·前端    | `CFNext-前端Pages版.zip` | Pages（高级模式） | 面板 UI + 登录 + 多后端管理 + 聚合下发                |
 
