@@ -14,7 +14,7 @@
 > ## [✈️ 四年超稳定老牌机场](https://www.beupisp.com/register?code=5vnEa9vV)
 > ## [✈️ 备用超高性价比机场](https://103.73.220.147:8888/#/register?code=luC4csRk)
 
-> ## [✨ 更新日志](https://github.com/PAICNI/CFNext/blob/main/Update%20Log.md)
+> ## [✨ 点击查看更新日志](https://github.com/PAICNI/CFNext/blob/main/Update%20Log.md)
 
 ## 一、项目概述与兼容性
 
