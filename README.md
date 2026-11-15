@@ -10,7 +10,7 @@
 > 
 > #### 最新版本部署视频教学：[▶️ 3.0 新版本部署教程](https://www.youtube.com/watch?v=CQ8zvWXkZzA)  面板各项功能设置视频教学：[▶️ 2.0 Worker模式视频使用教程](https://youtu.be/1GCZgdGFsk0)
 > 
-## 注：为了项目的稳定性，仓库不再提供明文代码，明文代码请在发布频道获取；
+## 注：为提升稳定性，仓库不再提供明文代码，明文代码请在发布频道中获取；
 > 
 > ### [✨ 点击查看更新日志](https://github.com/PAICNI/CFNext/blob/main/Update%20Log.md)[✈️ 四年超稳定老牌机场](https://www.beupisp.com/register?code=5vnEa9vV) [✈️ 备用超高性价比机场](https://103.73.220.147:8888/#/register?code=luC4csRk)
 
