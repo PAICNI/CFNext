@@ -8,8 +8,7 @@
 > 
 > #### 订阅开发者频道，支持开发者：[📺️ 我的 YouTube频道](https://www.youtube.com/@PAI_CN)
 > 
-> #### 最新版本部署视频教学：[▶️ 3.0 新版本部署教程](https://www.youtube.com/watch?v=CQ8zvWXkZzA)
-> 
+> #### 最新版本部署视频教学：[▶️ 3.0 新版本部署教程](https://www.youtube.com/watch?v=CQ8zvWXkZzA) #### 面板各项功能性设置视频教学：[▶️ 2.0 Worker模式视频使用教程](https://youtu.be/1GCZgdGFsk0)
 > 
 ## 注：为了项目的稳定性，仓库不再提供明文代码，明文代码请在发布频道获取；
 > 
