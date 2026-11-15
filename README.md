@@ -12,8 +12,7 @@
 > 
 ## 注：为了项目的稳定性，仓库不再提供明文代码，明文代码请在发布频道获取；
 > 
-> #### [✈️ 四年超稳定老牌机场](https://www.beupisp.com/register?code=5vnEa9vV)
-> #### [✈️ 备用超高性价比机场](https://103.73.220.147:8888/#/register?code=luC4csRk)
+> ### [✈️ 四年超稳定老牌机场](https://www.beupisp.com/register?code=5vnEa9vV) [✈️ 备用超高性价比机场](https://103.73.220.147:8888/#/register?code=luC4csRk)
 
 > ### [✨ 点击查看更新日志](https://github.com/PAICNI/CFNext/blob/main/Update%20Log.md)
 
