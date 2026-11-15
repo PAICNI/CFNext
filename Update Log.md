@@ -10,7 +10,7 @@
 - 数据面统一上限：建连固定 1 秒超时，读取默认 6 秒、上限 12 秒，优选 IP 竞速候选最多 6 个，写入队列 256 项 / 4MB。这些是全局常量，不接受配置项覆盖，避免个别部署把参数放大后拖垮实例。
 - 测速结果本地*判定：识别 speed.cloudflare.com 与 cp.cloudflare.com 的测速请求，直接返回本地构造的 204 结果，单次最多读取 64K*B。
 - 解析服务补充一个国内 DoH 候选，主候选不可用时多一条退路。
-- 此版本主要为防滥用检测加固，查杀特征码/伪造测速结果/非标准 Socket 入口/有界写入队列/释放 WebSocket、Reader、Writer、Socket 和定时器/竞速连接代际控制，迟到连接自动关闭均对齐（cmliu/Edgetunnel：https://github.com/cmliu/edgetunnel），字符串拆分在CFNext早期的代码中就已经实现，此次更新加入了更多的特征码拆分；
+- 此版本主要为防滥用检测加固，查杀特征码/伪造测速结果/非标准 Socket 入口/有界写入队列/释放 WebSocket、Reader、Writer、Socket 和定时器/竞速连接代际控制，迟到连接自动关闭均对齐[cmliu/edgetunnel](https://github.com/cmliu/edgetunnel)，字符串拆分在CFNext早期的代码中就已经实现，此次更新加入了更多的特征码拆分；
 ## 🐛 BUG 处理
 
 - 修复写入队列无上限导致的内存膨胀：排队项超过 256 条或 4MB 时关闭连接并拒绝后续写入，不再无限堆积。
