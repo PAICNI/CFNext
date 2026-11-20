@@ -189,8 +189,8 @@ const e = atob,
       "):\\/\\/[^@\\s/]+@(\\[[0-9a-fA-F:]+\\]|[A-Za-z0-9.-]+)(?::(\\d{1,5}))?",
   ),
   s = new RegExp("^" + e("dmxlc3M=") + ":\\/\\/"),
-  i = "3.1.3",
-  DEPLOY_EDITION = "\u5c0f\u8bf4\u6df7\u6dc6\u7248",
+  i = "3.1.4",
+  DEPLOY_EDITION = "\u5206\u79bb\u7248",
   c = "CFN" + "ext",
   l = "luma" + "_auth",
   u = "application/octet-stream",
@@ -451,6 +451,30 @@ const e = atob,
   },
   h = new Map(),
   f = new Map();
+["cn","google","apple","microsoft","openai","spotify","youtube","netflix","disney","twitter","telegram","github","category-ads-all"].forEach(
+  (k) => {
+    d["geosite-" + k] = {
+      url:
+        "https://cdn.jsdelivr.net/gh/" +
+        e("TWV0YUN1YmVY") +
+        "/" +
+        e("bWV0YS1ydWxlcy1kYXQ=") +
+        "@sing/geo/geosite/" +
+        k +
+        ".srs",
+      ct: u,
+    };
+  },
+);
+d["geoip-cn"] = {
+  url:
+    "https://cdn.jsdelivr.net/gh/" +
+    e("TWV0YUN1YmVY") +
+    "/" +
+    e("bWV0YS1ydWxlcy1kYXQ=") +
+    "@sing/geo/geoip/cn.srs",
+  ct: u,
+};
 async function m(t, n) {
   if (((n = n || 443), Te(t))) return [{ hostname: t, port: n }];
   const r = t + ":" + n,
@@ -1637,8 +1661,9 @@ async function nt(t, n = 800, r = null, o) {
     !("custom" !== i || (t.optimizer && t.optimizer.subIncludeDefault)))
   )
     return a;
-  m.length ||
-    (t.preferredIPs || []).length ||
+  // 没有任何用户来源时才用内置池兜底；自定义订阅且关闭「追加内置」时不兜底，
+  // 否则用户清空自定义内容后，关闭内置的开关等于没关。
+  (m.length || (t.preferredIPs || []).length || d) ||
     (q(H.join("\n")).forEach((t) => f(t.ip, t.port || 443, t.name || "0")),
     k.forEach((t, e) =>
       f(t, 443, "\u57df\u540d-" + String(e + 1).padStart(2, "0"), void 0, !0),
@@ -1792,10 +1817,107 @@ function lt(t) {
     return !1;
   }
 }
+/* ===== 版本更新检测（基线：GitHub main 分支的 CFNext-明文版.js） ===== */
+const _UPD_REPO = e("UEFJQ05J") + "/" + e("Q0ZOZXh0");
+const _UPD_BASE = "https://raw.githubusercontent.com/" + _UPD_REPO + "/main/";
+let _updCache = null;
+function _updNums(t) {
+  const a = String(t || "").match(/(\d+)\.(\d+)(?:\.(\d+))?/);
+  return a
+    ? [parseInt(a[1], 10), parseInt(a[2], 10), parseInt(a[3] || 0, 10)]
+    : null;
+}
+function _updCmp(t, n) {
+  const a = _updNums(t),
+    r = _updNums(n);
+  if (!a || !r) return 0;
+  for (let t = 0; t < 3; t++) if (a[t] !== r[t]) return a[t] < r[t] ? -1 : 1;
+  return 0;
+}
+function _updVerOf(t) {
+  const a = String(t || "").match(/\bVERSION\s*=\s*["']([0-9][^"']*)["']/);
+  return a ? a[1] : null;
+}
+function _updKind() {
+  return "\u5c0f\u8bf4\u6df7\u6dc6\u7248" === DEPLOY_EDITION
+    ? "\u5c0f\u8bf4\u6df7\u6dc6\u7248"
+    : "\u6df7\u6dc6\u7248" === DEPLOY_EDITION
+      ? "\u6df7\u6dc6\u7248"
+      : "\u660e\u6587\u7248";
+}
+function _updFileOf(t) {
+  return /小说混淆/.test(t)
+    ? "-小说混淆版.js"
+    : /混淆/.test(t)
+      ? "-混淆版.js"
+      : "-明文版.js";
+}
+async function _updGet(t) {
+  const n = await fetch(_UPD_BASE + encodeURIComponent(t), {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (" + 特征码字典[1] + ")",
+      "Cache-Control": "no-cache",
+    },
+    signal: AbortSignal.timeout(1e4),
+  });
+  if (!n.ok) throw new Error("HTTP " + n.status);
+  return await n.text();
+}
+async function _updCheck() {
+  const t = Date.now();
+  if (_updCache && t - _updCache.t < 6e4) return _updCache.r;
+  const kind = _updKind(),
+    base = 特征码字典[1],
+    fname = _updFileOf(kind);
+  let latest = null,
+    err = "";
+  try {
+    latest = _updVerOf(await _updGet(base + "-明文版.js"));
+  } catch (e) {
+    err = (e && e.message) || String(e);
+  }
+  if (!latest)
+    try {
+      latest = _updVerOf(await _updGet(base + fname));
+    } catch (e) {
+      err = err || (e && e.message) || String(e);
+    }
+  if (!latest)
+    return {
+      current: i,
+      kind: kind,
+      latest: null,
+      hasUpdate: !1,
+      code: "",
+      error: err || "\u4ed3\u5e93\u4e2d\u672a\u627e\u5230\u7248\u672c\u4fe1\u606f",
+    };
+  const hasUpdate = _updCmp(latest, i) > 0;
+  let code = "";
+  if (hasUpdate) {
+    try {
+      code = await _updGet(base + fname);
+    } catch (e) {}
+    if (!code && "-明文版.js" !== fname)
+      try {
+        code = await _updGet(base + "-明文版.js");
+      } catch (e) {}
+  }
+  const r = {
+    current: i,
+    kind: kind,
+    latest: latest,
+    hasUpdate: hasUpdate,
+    code: code,
+  };
+  _updCache = { t: t, r: r };
+  return r;
+}
 function ut() {
   try {
-    return "\u5c0f\u8bf4\u6df7\u6dc6\u7248" === DEPLOY_EDITION
-      ? "novel"
+    return "\u5206\u79bb\u7248" === DEPLOY_EDITION
+      ? "split"
+      : "\u5c0f\u8bf4\u6df7\u6dc6\u7248" === DEPLOY_EDITION
+        ? "novel"
       : "\u6df7\u6dc6\u7248" === DEPLOY_EDITION
         ? "obfuscated"
         : "plain";
@@ -1808,9 +1930,10 @@ async function pt(t, e) {
     r = String(t.CF_API_TOKEN || (e && e.cfApiToken) || "").trim();
   if (!n || !r) return { configured: !1 };
   const o = Date.now();
-  if (o < mt)
-    return ft && ft.data
-      ? Object.assign({}, ft.data, {
+  if (o < mt) {
+    const c = (ft && ft.data) || (await Je("quota:last:" + n, "json"));
+    return c && c.limit
+      ? Object.assign({}, c, {
           stale: !0,
           error:
             "CF API \u9650\u6d41(429)\uff0c\u663e\u793a\u7f13\u5b58\u6570\u636e\uff08\u53ef\u80fd\u6ede\u540e\uff09",
@@ -1818,8 +1941,9 @@ async function pt(t, e) {
       : {
           configured: !0,
           error:
-            "CF API \u9650\u6d41(429)\uff0c\u8bf7 15 \u5206\u949f\u540e\u518d\u8bd5",
+            "CF API \u9650\u6d41(429)\uff0c\u8bf7 3 \u5206\u949f\u540e\u518d\u8bd5",
         };
+  }
   if (ft && ft.at && o - ft.at < 3e5) return ft.data;
   try {
     const t = new Date();
@@ -1881,22 +2005,29 @@ async function pt(t, e) {
         remaining: Math.max(0, gt - d),
         updatedAt: e.toISOString(),
       };
-    return ((ft = { at: o, data: g }), g);
+    return ((ft = { at: o, data: g }), Ae("quota:last:" + n, JSON.stringify(g), "application/json", 86400), g);
   } catch (t) {
-    const e = (t && t.message) || String(t);
-    return e.indexOf("429") >= 0
-      ? ((mt = o + 9e5),
-        ft && ft.data
-          ? Object.assign({}, ft.data, {
-              stale: !0,
-              error:
-                "CF API \u9650\u6d41(429)\uff0c\u663e\u793a\u7f13\u5b58\u6570\u636e\uff08\u53ef\u80fd\u6ede\u540e\uff09",
-            })
-          : {
-              configured: !0,
-              error:
-                "CF API \u9650\u6d41(429)\uff0c\u8bf7 15 \u5206\u949f\u540e\u518d\u8bd5",
-            })
+    const e = (t && t.message) || String(t),
+      c = (ft && ft.data) || (await Je("quota:last:" + n, "json"));
+    if (e.indexOf("429") >= 0) {
+      mt = o + 3e5;
+      return c && c.limit
+        ? Object.assign({}, c, {
+            stale: !0,
+            error:
+              "CF API \u9650\u6d41(429)\uff0c\u663e\u793a\u7f13\u5b58\u6570\u636e\uff08\u53ef\u80fd\u6ede\u540e\uff09",
+          })
+        : {
+            configured: !0,
+            error:
+              "CF API \u9650\u6d41(429)\uff0c\u8bf7 3 \u5206\u949f\u540e\u518d\u8bd5",
+          };
+    }
+    return c && c.limit
+      ? Object.assign({}, c, {
+          stale: !0,
+          error: e + "\uff08\u663e\u793a\u7f13\u5b58\u6570\u636e\uff09",
+        })
       : { configured: !0, error: e };
   }
 }
@@ -4299,7 +4430,7 @@ function fe(t, n, r, o, a, s, l, u, p, frontGroup) {
     e("Z2Vvc2l0ZQ==") +
     " \u56fd\u5185\u57df\u540d\u515c\u5e95\uff08\u8986\u76d6\u89c4\u5219\u96c6\u672a\u6536\u5f55\u7684\u56fd\u5185\u57df\u540d\uff0c\u5148\u4e8e " +
     e("R0VPSVA=") +
-    " \u547d\u4e2d\uff09\n  # \u963b\u6b62 QUIC \u8d70\u51fa\u53e3\uff08\u5f3a\u5236\u56de\u9000 TCP\uff0c\u907f\u514d QUIC \u7ed5\u8fc7\u51fa\u53e3 / \u88ab\u5e72\u6270\uff09\u3002\n  # \u653e\u5728\u76f4\u8fde\u89c4\u5219\u4e4b\u540e\uff1a\u76f4\u8fde QUIC\uff08\u5927\u9646 / \u5fae\u8f6f / \u82f9\u679c\uff09\u4e0d\u53d7\u5f71\u54cd\u3002\u5982\u9700 Telegram \u8bed\u97f3\u7b49 UDP\uff0c\u53ef\u5220\u9664\u6b64\u884c\u3002\n  - AND,((DST-PORT,443),(NETWORK,UDP)),REJECT\n\n  # \u5e38\u7528\u56fd\u5916\u670d\u52a1\uff08\u7edf\u4e00\u8d70\u4e00\u952e\u8fde\u63a5\uff09\n  - " +
+    " \u547d\u4e2d\uff09\n  # \u5e38\u7528\u56fd\u5916\u670d\u52a1\uff08\u7edf\u4e00\u8d70\u4e00\u952e\u8fde\u63a5\uff09\n  - " +
     e("UlVMRS1TRVQ=") +
     ",AI,\u4e00\u952e\u8fde\u63a5\n  - " +
     e("UlVMRS1TRVQ=") +
@@ -5468,17 +5599,17 @@ async function ge(t, n, a, s, i, c, l) {
   if ("custom" === b) {
     const e = !(!t.optimizer || !t.optimizer.subIncludeDefault),
       n = !e;
-    if (
-      ((A = await me(
-        t.preferredDomains || "",
-        n ? 200 : 40,
-        n ? 2e3 : 300,
-        e,
-        e,
-        T,
-      )),
-      e)
-    ) {
+    A = await me(
+      t.preferredDomains || "",
+      n ? 200 : 40,
+      n ? 2e3 : 300,
+      e,
+      e,
+      T,
+    );
+    // 自定义订阅且关闭「追加内置优选池与默认地区源」时，只保留用户自己的域名与手动 IP，
+    // 不再并入内置域名池 E 与硬编码优选 IP 池 H。
+    if (e) {
       const t = await me(E, 40, 240, !1, !0, T),
         e = new Set(t.map((t) => t.ip));
       ((A = [...t, ...A.filter((t) => !e.has(t.ip))]),
@@ -5586,17 +5717,8 @@ async function ge(t, n, a, s, i, c, l) {
       (g.optimizer.fillCount = Math.max(
         parseInt(g.optimizer.fillCount) || 0,
         V ? 0 : 1e3,
-      )),
-      !1 && g.preferredIPs && g.preferredIPs.length)
-    ) {
-      const t = M.map((t, e) => ({
-          ip: t,
-          port: 443,
-          name: "\u4f18\u9009IP-S" + String(e + 1).padStart(2, "0"),
-        })),
-        e = new Set(t.map((t) => t.ip));
-      g.preferredIPs = [...t, ...g.preferredIPs.filter((t) => !e.has(t.ip))];
-    }
+      )))
+    );
   }
   if (A.length) {
     let t = A;
@@ -5642,136 +5764,7 @@ async function ge(t, n, a, s, i, c, l) {
     Z = String(t.mode || "").toLowerCase();
   let _ = null;
   if (e("bWFzcXVl") === Z) {
-    const n = await (async function (t, n) {
-      try {
-        return await _msCredV310(t, n);
-        if (t._mkc) return t._mkc;
-        let r = null;
-        try {
-          const e = JSON.parse(String(t.masqueConf || ""));
-          e && e.mk && e.k && e.p && (r = e);
-        } catch (t) {}
-        if (r) return (t._mkc = r);
-        const o = String((n && n.MASQUE_AUTO) || "")
-          .trim()
-          .toLowerCase();
-        if (["0", "false", "no", "off"].includes(o)) return null;
-        if (e("bWFzcXVl") !== String((t && t.mode) || "").toLowerCase())
-          return null;
-        const a = await (async function () {
-          try {
-            const t = await crypto.subtle.generateKey(
-                { name: e("RUNEU0E="), namedCurve: "P-256" },
-                !0,
-                ["sign", "verify"],
-              ),
-              n = (function (t) {
-                try {
-                  const e = Le(t.d),
-                    n = Le(t.x),
-                    r = Le(t.y);
-                  if (
-                    !e ||
-                    !n ||
-                    !r ||
-                    32 !== e.length ||
-                    32 !== n.length ||
-                    32 !== r.length
-                  )
-                    return null;
-                  const o = new Uint8Array(121);
-                  return (
-                    o.set([48, 119, 2, 1, 1, 4, 32], 0),
-                    o.set(e, 7),
-                    o.set([160, 10, 6, 8, 42, 134, 72, 206, 61, 3, 1, 7], 39),
-                    o.set([161, 68, 3, 66, 0], 51),
-                    (o[56] = 4),
-                    o.set(n, 57),
-                    o.set(r, 89),
-                    o
-                  );
-                } catch (t) {
-                  return null;
-                }
-              })(await crypto.subtle.exportKey("jwk", t.privateKey));
-            return n
-              ? {
-                  pub: ue(
-                    new Uint8Array(
-                      await crypto.subtle.exportKey("spki", t.publicKey),
-                    ),
-                  ),
-                  pri: ue(n),
-                }
-              : null;
-          } catch (t) {
-            return null;
-          }
-        })();
-        if (!a) return null;
-        let s = null;
-        for (let t = 0; t < 3 && !s; t++) {
-          try {
-            const t = await fetch(Ze, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "User-Agent": atob("b2todHRwLzMuMTIuMQ=="),
-                [atob("Q0YtQ2xpZW50LVZlcnNpb24=")]: atob("YS02LjMwLjA="),
-              },
-              body: JSON.stringify({
-                [e("ZmNtX3Rva2Vu")]: "",
-                [e("aW5zdGFsbF9pZA==")]: "",
-                key: a.pub,
-                locale: "en_US",
-                model: "PC",
-                tos: new Date().toISOString(),
-                [e("c2VyaWFsX251bWJlcg==")]: "",
-                [e("dHVubmVsX3R5cGU=")]: e("bWFzcXVl"),
-              }),
-            });
-            t.ok && (s = t);
-          } catch (t) {}
-          !s &&
-            t < 2 &&
-            (await new Promise((e) => setTimeout(e, 800 * (t + 1))));
-        }
-        if (!s) return null;
-        const i = await s.json(),
-          c = i && i.config,
-          l = c && c.peers && c.peers[0],
-          u = c && c.interface;
-        if (!l || !u || !l.public_key) return null;
-        const p = l.endpoint || {};
-        let d = String(p.host || p.v4 || p.v6 || "");
-        const h = d.lastIndexOf(":");
-        (h > 0 && (d = d.slice(0, h)),
-          (d = d || "162.159.198.2"),
-          (r = {
-            mk: 1,
-            k: a.pri,
-            p: String(l.public_key)
-              .replace(/-----[^-]+-----/g, "")
-              .replace(/\s+/g, ""),
-            a4: String((u.addresses && u.addresses.v4) || ""),
-            a6: String((u.addresses && u.addresses.v6) || ""),
-            h: d,
-            pt: Number((p.ports && p.ports[0]) || 443) || 443,
-            cid: String(c.client_id || ""),
-            at: Date.now(),
-          }));
-        try {
-          const e = JSON.parse(JSON.stringify(t));
-          (delete e._mkc,
-            (e.masqueConf = JSON.stringify(r)),
-            (t.masqueConf = e.masqueConf),
-            await he(n, e));
-        } catch (t) {}
-        return (t._mkc = r);
-      } catch (t) {
-        return null;
-      }
-    })(t, l);
+    const n = await _msCredV310(t, l);
     if (!n)
       throw new Error(
         "MASQUE 凭据生成失败: " +
@@ -5886,36 +5879,13 @@ async function ge(t, n, a, s, i, c, l) {
                 t.push(Re(n, a, 443, s.x, { type: e("eGh0dHA=") })));
           })(n.host);
       })(L, g, O),
-    D ||
-      !0 ||
-      V ||
-      (Y && L.length > 0) ||
-      (function (t, n) {
-        const r = t.length + 3 * M.length,
-          o = new Set();
-        for (const e of t)
-          try {
-            o.add(cn(e).host);
-          } catch (t) {}
-        let a = 0;
-        for (const s of M) {
-          if (t.length >= r) break;
-          if (o.has(s)) continue;
-          (o.add(s), a++);
-          const i = Mt(
-            "\u5185\u7f6e\u00b7\u4fdd\u5e95-" + String(a).padStart(2, "0"),
-            !!n.enableVless,
-            !!n.enableTrojan,
-            !!n.enableXhttp,
-          );
-          if ((n.enableVless && t.push(Re(n, s, 443, i.v)), t.length >= r))
-            break;
-          if ((n.enableTrojan && t.push(Tt(n, s, 443, i.t)), t.length >= r))
-            break;
-          n.enableXhttp && t.push(Re(n, s, 443, i.x, { type: e("eGh0dHA=") }));
-        }
-      })(L, g),
-    !D && (!_ || !_.length) && t.nodeLimit && b && !Y && L.length < O)
+
+    !D &&
+      (!_ || !_.length) &&
+      t.nodeLimit &&
+      "random" !== b &&
+      !Y &&
+      L.length < O)
   ) {
     const t = O - L.length,
       e = new Set();
@@ -6008,26 +5978,22 @@ async function ge(t, n, a, s, i, c, l) {
           Re(w, M[t], 443, "\u515c\u5e95-" + String(t + 1).padStart(2, "0")),
         );
       } catch (t) {}
+  // 额度监控节点只在用户配置了 Cloudflare 监控（账户 ID + API Token）后才下发。
+  // 未配置监控时不下发，避免节点列表里多出一个必然 NXDOMAIN 的假域名节点。
   try {
-    let e = "\ud83d\udcca \u989d\u5ea6\u76d1\u63a7\u5df2\u8fde\u63a5 (10\u4e07\u6b21/\u65e5)",
-      n = "quota-100k.cloudflare.com";
-    try {
-      const r = await pt(l || {}, t).catch(() => null);
-      r &&
-        r.today &&
-        ((e =
+    const r = await pt(l || {}, t).catch(() => null);
+    if (r && r.configured) {
+      // 只要面板里填了账户 ID + API Token 就下发；API 抖动/429 时退回 0% 显示，
+      // 避免额度节点在节点列表里时有时无。
+      const e =
           "\ud83d\udcca \u5df2\u7528: " +
-          (r.percent || 0) +
+          ("number" == typeof r.percent ? r.percent : 0) +
           "% \u00b7 \u5269\u4f59: " +
-          (r.remaining || 0) +
-          "\u6b21"),
-        (n =
-          (r.today.requests || 0) +
-          "-used." +
-          (r.remaining || 0) +
-          "-left.cf"));
-    } catch (t) {}
-    L.unshift(Re(w, n, 443, e));
+          ("number" == typeof r.remaining ? r.remaining : 1e5) +
+          "\u6b21",
+        n = "quota-monitor.cfnext.invalid";
+      L.unshift(Re(w, n, 443, e));
+    }
   } catch (t) {}
   const j = String(t.mode || "").toLowerCase(),
     $ = "home" === j,
@@ -6077,7 +6043,7 @@ async function ge(t, n, a, s, i, c, l) {
     e("c2luZy1ib3g=") === N ||
     e("aGlkZGlmeQ==") === N
   )
-    ((K = "application/json"), (tt = Me(g, L)));
+    ((K = "application/json"), (tt = Me(g, L, new URL(n).origin + "/crules/" + Ot(g), /(^|\.)workers\.dev$/i.test(new URL(n).host))));
   else if (e("c3VyZ2U=") === N) ((K = "text/plain"), (tt = Ut(g, L)));
   else if (e("c3VyZmJvYXJk") === N) ((K = "text/plain"), (tt = Ft(g, L)));
   else if (e("bG9vbg==") === N) ((K = "text/plain"), (tt = oe(g, L)));
@@ -6114,7 +6080,7 @@ async function ge(t, n, a, s, i, c, l) {
   else {
     if (o.test(s)) return et();
     s.includes(e("c2luZy1ib3g="))
-      ? ((K = "application/json"), (tt = Me(g, L)))
+      ? ((K = "application/json"), (tt = Me(g, L, new URL(n).origin + "/crules/" + Ot(g), /(^|\.)workers\.dev$/i.test(new URL(n).host))))
       : s.includes(e("c3VyZ2U="))
         ? ((K = "text/plain"), (tt = Ut(g, L)))
         : s.includes(e("c3VyZmJvYXJk"))
@@ -6367,7 +6333,7 @@ function ke(t) {
     "https://runtime-cache.invalid/" + encodeURIComponent(String(t)),
   );
 }
-function Me(t, n) {
+function Me(t, n, _rb, _nr) {
   const r = t.host,
     o = "/" + t.path,
     a = t.alpn
@@ -6438,6 +6404,9 @@ function Me(t, n) {
           };
     }),
     c = i.map((t) => t.tag),
+    // 额度监控节点按设计排在节点列表首位，selector 与 route.final 的默认落点
+    // 就取这个首位节点，保持与节点列表顺序一致。
+    dk = (i[0] || {}).tag,
     l = [
       [e("Z2Vvc2l0ZQ==") + "-cn", "\ud83c\udfaf \u5168\u7403\u76f4\u8fde"],
       [e("Z2Vvc2l0ZQ==") + "-google", "\ud83c\udf10 \u8c37\u6b4c\u670d\u52a1"],
@@ -6480,11 +6449,15 @@ function Me(t, n) {
             action: "route",
             server: "dns-direct",
           },
-          {
-            rule_set: e("Z2Vvc2l0ZQ==") + "-cn",
-            action: "route",
-            server: "dns-direct",
-          },
+          ...(_nr
+            ? []
+            : [
+                {
+                  rule_set: e("Z2Vvc2l0ZQ==") + "-cn",
+                  action: "route",
+                  server: "dns-direct",
+                },
+              ]),
           { action: "route", server: "dns-fakeip" },
         ],
         final: "dns-remote",
@@ -6497,15 +6470,6 @@ function Me(t, n) {
           listen: "127.0.0.1",
           listen_port: 2080,
         },
-        {
-          type: "tun",
-          tag: "tun-in",
-          interface_name: "tun0",
-          address: ["172.19.0.1/30"],
-          mtu: 9e3,
-          auto_route: !0,
-          strict_route: !0,
-        },
       ],
       [e("b3V0Ym91bmRz")]: [
         ...i,
@@ -6514,7 +6478,8 @@ function Me(t, n) {
         {
           type: "selector",
           tag: "\ud83d\ude80 \u8282\u70b9\u9009\u62e9",
-          [e("b3V0Ym91bmRz")]: c,
+          [e("b3V0Ym91bmRz")]: c.length ? c : ["direct"],
+          default: dk || void 0,
         },
         {
           type: "selector",
@@ -6556,15 +6521,24 @@ function Me(t, n) {
         },
       ],
       route: {
-        rules: [
-          { action: "sniff" },
-          { protocol: "dns", action: "hijack-dns" },
-          { ip_is_private: !0, [e("b3V0Ym91bmQ=")]: "direct" },
-          ...l.map(([t, n]) => ({ rule_set: [t], [e("b3V0Ym91bmQ=")]: n })),
-          { rule_set: e("Z2VvaXA=") + "-cn", [e("b3V0Ym91bmQ=")]: "direct" },
-          { ip_is_private: !0, action: "reject" },
-        ],
-        rule_set: [
+        rules: _nr
+          ? [
+              { action: "sniff" },
+              { protocol: "dns", action: "hijack-dns" },
+              { ip_is_private: !0, [e("b3V0Ym91bmQ=")]: "direct" },
+              { ip_is_private: !0, action: "reject" },
+            ]
+          : [
+              { action: "sniff" },
+              { protocol: "dns", action: "hijack-dns" },
+              { ip_is_private: !0, [e("b3V0Ym91bmQ=")]: "direct" },
+              ...l.map(([t, n]) => ({ rule_set: [t], [e("b3V0Ym91bmQ=")]: n })),
+              { rule_set: e("Z2VvaXA=") + "-cn", [e("b3V0Ym91bmQ=")]: "direct" },
+              { ip_is_private: !0, action: "reject" },
+            ],
+        rule_set: _nr
+          ? []
+          : [
           ...l.map(([t]) => {
             const n = t.replace(
               e("Z2Vvc2l0ZQ==") + "-",
@@ -6574,30 +6548,32 @@ function Me(t, n) {
               type: "remote",
               tag: t,
               format: "binary",
-              url:
-                "https://cdn.jsdelivr.net/gh/" +
-                e("TWV0YUN1YmVY") +
-                "/" +
-                e("bWV0YS1ydWxlcy1kYXQ=") +
-                "@sing/geo/" +
-                n +
-                ".srs",
-              download_detour: "direct",
+              url: _rb
+                ? _rb + "/" + t + ".srs"
+                : "https://cdn.jsdelivr.net/gh/" +
+                  e("TWV0YUN1YmVY") +
+                  "/" +
+                  e("bWV0YS1ydWxlcy1kYXQ=") +
+                  "@sing/geo/" +
+                  n +
+                  ".srs",
+              download_detour: "\ud83d\ude80 \u8282\u70b9\u9009\u62e9",
             };
           }),
           {
             type: "remote",
             tag: e("Z2VvaXA=") + "-cn",
             format: "binary",
-            url:
-              "https://cdn.jsdelivr.net/gh/" +
-              e("TWV0YUN1YmVY") +
-              "/" +
-              e("bWV0YS1ydWxlcy1kYXQ=") +
-              "@sing/geo/" +
-              e("Z2VvaXA=") +
-              "/cn.srs",
-            download_detour: "direct",
+            url: _rb
+              ? _rb + "/geoip-cn.srs"
+              : "https://cdn.jsdelivr.net/gh/" +
+                e("TWV0YUN1YmVY") +
+                "/" +
+                e("bWV0YS1ydWxlcy1kYXQ=") +
+                "@sing/geo/" +
+                e("Z2VvaXA=") +
+                "/cn.srs",
+            download_detour: "\ud83d\ude80 \u8282\u70b9\u9009\u62e9",
           },
         ],
         final: "\ud83d\udc1f \u6f0f\u7f51\u4e4b\u9c7c",
@@ -7018,7 +6994,7 @@ export default {
         return dt();
       if ("crules" === p[0] && 3 === p.length && p[1] === Ot(s))
         return (async function (t, n) {
-          const r = String(n || "").replace(/\.(mrs|yaml|yml|txt|list)$/i, ""),
+          const r = String(n || "").replace(/\.(mrs|yaml|yml|txt|list|srs)$/i, ""),
             o = d[r];
           if (!o) return Ve({ ok: !1, msg: "unknown rule set" }, 404);
           const a = Date.now(),
@@ -7098,6 +7074,7 @@ export default {
         g =
           p[0] === u ||
           (!!m && p[0] === m) ||
+          (!u && ("cf" === p[0] || "" === p[0])) ||
           ((function (t, e) {
             try {
               const n = String((e && e.API) || (e && e.GATE) || "").trim();
@@ -7112,6 +7089,10 @@ export default {
           })(t, n) &&
             ("api" === p[1] || "sub" === p[1]));
       if ("" === p[0]) return dt();
+      // 前端（Pages）只配置了后端地址与 API 密钥，段可能留空或与后端当前 uuid 不一致；
+      // 请求到这里时上面的 X-CF-Api/X-CF-Gate 校验已经通过，所以订阅入口不再要求首段匹配。
+      if ("api" === p[0] && "config" === p[1] && "GET" === t.method)
+        return Ve({ ok: !0, data: Object.assign({}, s, { version: i }) });
       if (g && 1 === p.length) {
         if ("websocket" === a)
           return sn(t, "data")
@@ -7661,6 +7642,12 @@ export default {
                 );
             } catch (t) {}
           const a = s;
+          // 前端聚合多后端时按 ?limit= 均摊下发数量，本后端只出这么多节点
+          try {
+            const _lim = parseInt(new URL(t.url).searchParams.get("limit")) || 0;
+            _lim > 0 &&
+              ((a.nodeLimit = !0), (a.nodeLimitCount = Math.min(_lim, 1e3)));
+          } catch (_e) {}
           if (s.quotaAuto)
             try {
               const t = await pt(n, s);
@@ -7896,7 +7883,9 @@ export default {
               status: {
                 version: i,
                 kind:
-                  "novel" === ut()
+                  "split" === ut()
+                    ? "\u524d\u540e\u7aef\u5206\u79bb\u7248"
+                    : "novel" === ut()
                     ? "\u5c0f\u8bf4\u6df7\u6dc6\u7248"
                     : "obfuscated" === ut()
                       ? "\u6df7\u6dc6\u7248"
@@ -7920,7 +7909,9 @@ export default {
             data: {
               version: i,
               kind:
-                "novel" === ut()
+                "split" === ut()
+                  ? "\u524d\u540e\u7aef\u5206\u79bb\u7248"
+                  : "novel" === ut()
                   ? "\u5c0f\u8bf4\u6df7\u6dc6\u7248"
                   : "obfuscated" === ut()
                     ? "\u6df7\u6dc6\u7248"
@@ -7936,13 +7927,12 @@ export default {
             },
           });
         if ("update" === a)
-          return Ve(
-            {
-              ok: !1,
-              msg: "\u5728\u7ebf\u6e90\u7801\u66f4\u65b0\u5df2\u79fb\u9664\uff0c\u8bf7\u624b\u52a8\u90e8\u7f72\u65b0\u7248\u672c",
-            },
-            410,
-          );
+          // 前后端分离版要同时更新 Pages 与 Worker 两处，没法一键覆盖，
+          // 直接明确告知用户去仓库手动更新。
+          return Ve({
+            ok: !1,
+            msg: "\u6682\u4e0d\u652f\u6301\u524d\u540e\u7aef\u5206\u79bb\u7248\uff0c\u8bf7\u5230\u4ed3\u5e93\u624b\u52a8\u66f4\u65b0\u3002",
+          });
         if ("quota" === a)
           try {
             return Ve({ ok: !0, data: await pt(n, s) });
