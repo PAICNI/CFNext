@@ -189,7 +189,7 @@ const e = atob,
       "):\\/\\/[^@\\s/]+@(\\[[0-9a-fA-F:]+\\]|[A-Za-z0-9.-]+)(?::(\\d{1,5}))?",
   ),
   s = new RegExp("^" + e("dmxlc3M=") + ":\\/\\/"),
-  i = "3.1.4",
+  i = "3.1.5",
   DEPLOY_EDITION = "\u5206\u79bb\u7248",
   c = "CFN" + "ext",
   l = "luma" + "_auth",
@@ -473,6 +473,18 @@ d["geoip-cn"] = {
     "/" +
     e("bWV0YS1ydWxlcy1kYXQ=") +
     "@sing/geo/geoip/cn.srs",
+  ct: u,
+};
+// 电报客户端连 DC 时直接用 IP，不经过域名，geosite-telegram 匹配不到它的流量；
+// Clash 侧一直有 TelegramIP 规则集兜底，sing-box 侧缺这一条，只能落到 final（漏网之鱼）。
+// 这里补一份 IP 规则集，让电报的 IP 直连也明确走「国外媒体」，不再依赖 final 的落点。
+d["geoip-telegram"] = {
+  url:
+    "https://cdn.jsdelivr.net/gh/" +
+    e("TWV0YUN1YmVY") +
+    "/" +
+    e("bWV0YS1ydWxlcy1kYXQ=") +
+    "@sing/geo/geoip/telegram.srs",
   ct: u,
 };
 async function m(t, n) {
@@ -5754,8 +5766,11 @@ async function ge(t, n, a, s, i, c, l) {
     const e = parseInt(t.nodeLimitCount) || 0;
     e > 0 && (O = Math.min(e, 1e3));
   }
-  (t._quotaCap && (O = Math.min(O, t._quotaCap)),
-    t.cpuLimit && (O = Math.max(10, Math.floor(0.6 * O))));
+  // 下发条数只认用户显式设置的上限（精确节点数量控制 / 聚合时的 ?limit=）。
+  // 以前这里还会被「配额自动化」算出的 _quotaCap 再压一次，结果配额开到 1000、
+  // 实际只给 200 多条，用户完全看不出原因。账户日请求量归告警和严格模式管，
+  // 不再参与裁剪订阅长度。
+  t.cpuLimit && (O = Math.max(10, Math.floor(0.6 * O)));
   const W =
       "random" === b
         ? Object.assign({}, t.filter, { region: "all" })
@@ -5993,6 +6008,9 @@ async function ge(t, n, a, s, i, c, l) {
           "\u6b21",
         n = "quota-monitor.cfnext.invalid";
       L.unshift(Re(w, n, 443, e));
+      // 额度节点只用于显示，不额外占用「精确节点数量控制」的预算：
+      // 列表已经顶到上限时把它挤掉队尾那一个，保证总数还是用户设的值。
+      L.length > O && (L.length = O);
     }
   } catch (t) {}
   const j = String(t.mode || "").toLowerCase(),
@@ -6013,7 +6031,14 @@ async function ge(t, n, a, s, i, c, l) {
           ($ ? "\u5bb6\u5bbd" : "MASQUE") +
           " \u6a21\u5f0f\uff1a\u672c\u8ba2\u9605\u683c\u5f0f\u4e0d\u652f\u6301\u8be5\u6a21\u5f0f\u7684\u539f\u751f\u8282\u70b9\uff0c\u672a\u4e0b\u53d1 Worker \u8282\u70b9\u3002\u8bf7\u4f7f\u7528 Clash/Mihomo \u517c\u5bb9\u683c\u5f0f\u3002\n",
       };
-    L = [];
+    // 家宽模式必须留着「隧道前置」节点：家宽 openvpn 靠 dialer-proxy 经它拨号，
+    // 订阅里的「隧道前置」代理组也是拿这批节点的名字建的。此前这里把节点整表清空，
+    // 前置节点跟着一起没了，客户端只看得到家宽节点、没有 CF 前置，openvpn 也拨不出去。
+    // 非自定义订阅下 L 早被前置构造替换成 3 个前置节点，自定义订阅保留用户自己的节点，
+    // 两种都只把额度监控那个假域名节点剔掉（L 里存的是 URI 字符串，直接按串判）。
+    L = $
+      ? L.filter((t) => String(t || "").indexOf("quota-monitor.") < 0)
+      : [];
   }
   let K, tt;
   const et = () => {
@@ -6404,9 +6429,10 @@ function Me(t, n, _rb, _nr) {
           };
     }),
     c = i.map((t) => t.tag),
-    // 额度监控节点按设计排在节点列表首位，selector 与 route.final 的默认落点
-    // 就取这个首位节点，保持与节点列表顺序一致。
-    dk = (i[0] || {}).tag,
+    // 额度监控节点排在列表首位只是为了显示额度，它是个必然 NXDOMAIN 的假域名，
+    // 不能当 selector / route.final 的默认落点：否则刚导入、还没手动选节点时，
+    // 所有走兜底规则的流量（包括电报按 IP 直连的 DC）都会落到一个连不通的节点上。
+    dk = (i.find((t) => String(t.server || "").indexOf("quota-monitor.") < 0) || i[0] || {}).tag,
     l = [
       [e("Z2Vvc2l0ZQ==") + "-cn", "\ud83c\udfaf \u5168\u7403\u76f4\u8fde"],
       [e("Z2Vvc2l0ZQ==") + "-google", "\ud83c\udf10 \u8c37\u6b4c\u670d\u52a1"],
@@ -6533,6 +6559,11 @@ function Me(t, n, _rb, _nr) {
               { protocol: "dns", action: "hijack-dns" },
               { ip_is_private: !0, [e("b3V0Ym91bmQ=")]: "direct" },
               ...l.map(([t, n]) => ({ rule_set: [t], [e("b3V0Ym91bmQ=")]: n })),
+              // 电报按 IP 直连 DC，域名规则集接不住，这里用 IP 规则集兜底
+              {
+                rule_set: [e("Z2VvaXA=") + "-telegram"],
+                [e("b3V0Ym91bmQ=")]: "\ud83c\udf0d \u56fd\u5916\u5a92\u4f53",
+              },
               { rule_set: e("Z2VvaXA=") + "-cn", [e("b3V0Ym91bmQ=")]: "direct" },
               { ip_is_private: !0, action: "reject" },
             ],
@@ -6560,6 +6591,21 @@ function Me(t, n, _rb, _nr) {
               download_detour: "\ud83d\ude80 \u8282\u70b9\u9009\u62e9",
             };
           }),
+          {
+            type: "remote",
+            tag: e("Z2VvaXA=") + "-telegram",
+            format: "binary",
+            url: _rb
+              ? _rb + "/geoip-telegram.srs"
+              : "https://cdn.jsdelivr.net/gh/" +
+                e("TWV0YUN1YmVY") +
+                "/" +
+                e("bWV0YS1ydWxlcy1kYXQ=") +
+                "@sing/geo/" +
+                e("Z2VvaXA=") +
+                "/telegram.srs",
+            download_detour: "\ud83d\ude80 \u8282\u70b9\u9009\u62e9",
+          },
           {
             type: "remote",
             tag: e("Z2VvaXA=") + "-cn",
@@ -7648,19 +7694,8 @@ export default {
             _lim > 0 &&
               ((a.nodeLimit = !0), (a.nodeLimitCount = Math.min(_lim, 1e3)));
           } catch (_e) {}
-          if (s.quotaAuto)
-            try {
-              const t = await pt(n, s);
-              if (
-                t.configured &&
-                t.today &&
-                t.today.requests >= Math.round(6e4)
-              ) {
-                const e = t.today.requests / t.limit,
-                  n = Math.max(0.1, (1 - e) / 0.4);
-                a._quotaCap = Math.max(20, Math.round(1e3 * n));
-              }
-            } catch (t) {}
+          // 配额自动化只负责告警和「严格模式」拦截，不再拿日请求量去压缩下发条数：
+          // 节点多少由上面的 nodeLimitCount / ?limit= 决定，账户额度紧张不该悄悄改订阅长度。
           const i = await (async function () {
               const e = s.preferredIPs || [],
                 i = (function () {
@@ -7691,7 +7726,6 @@ export default {
                   (s.optimizer && s.optimizer.subMode) || "",
                   s.host || "",
                   s.homeWan ? 1 : 0,
-                  s._quotaCap || 0,
                   String(s.mode || ""),
                   s.masqueEnable ? 1 : 0,
                   (s.masqueConf || "").length,
