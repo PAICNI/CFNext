@@ -2318,12 +2318,26 @@ const xt = [
 // ---- 数据面统一上限（全局常量，不接受配置项覆盖）----
 const _NET_LIMITS = Object.freeze({
   connectTimeoutMs: 1000,
+  telegramConnectTimeoutMs: 4000,
   readTimeoutDefaultMs: 6000,
   readTimeoutMaxMs: 12000,
   raceMax: 6,
   writeQueueItems: 256,
   writeQueueBytes: 4194304,
 });
+function _isTelegramTarget(t) {
+  const e = String(t || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "");
+  if (
+    /^149\.154\.(?:16\d|17[0-5])\./.test(e) ||
+    /^91\.108\.(?:[4-9]|1\d|2[0-3]|5[6-9])\./.test(e) ||
+    /^185\.76\.151\./.test(e)
+  )
+    return !0;
+  return /^(?:2001:b28:f23[cd-f]|2001:67c:4e8):/i.test(e);
+}
 function _boundedInt(t, e, n, r) {
   const o = Number.parseInt(t, 10);
   return Number.isFinite(o) ? Math.max(n, Math.min(r, o)) : e;
@@ -3391,7 +3405,17 @@ async function Dt(t, r, o, a, s, 连接头) {
           return await X(o.map((t) => () => d(() => It(t))));
         });
     },
-    S = () => d(() => It(I)),
+    // Telegram DC 在部分 Cloudflare 机房建立 TCP 会超过通用的 1 秒上限。
+    // 参考实现使用约 4 秒；仅对 Telegram 官方网段放宽，其他目标仍保持 1 秒。
+    S = () =>
+      d(() =>
+        It(
+          I,
+          _isTelegramTarget(t.addr)
+            ? _NET_LIMITS.telegramConnectTimeoutMs
+            : void 0,
+        ),
+      ),
     v = u ? () => d(() => u(I)) : null;
   if ("only" === c && v) return (await v()) || h();
   if ("" === c && v) {
@@ -7543,10 +7567,10 @@ export default {
                       ? r
                       : null;
                   })(t.headers.get("sec-websocket-protocol"), n);
-                (f &&
-                  h(f).catch((t) => {
-                    _close(!0, 1011, (t && t.message) || t);
-                  }),
+                // Early Data 必须与后续 WebSocket message 共用同一条串行队列。
+                // 直接调用 h(f) 时，客户端紧接着送到的首个 message 会再次进入 h()，
+                // 两次握手可并发拨号；Telegram 启动流量很密集，竞态会表现为持续转圈。
+                (f && _push(f, !0),
                   a.addEventListener("message", (t) => {
                     try {
                       const e =
