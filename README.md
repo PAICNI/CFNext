@@ -18,7 +18,7 @@
 
 | 项    | 内容                                                                                              |
 | ---- | ----------------------------------------------------------------------------------------------- |
-| 当前版本 | `3.1.6`                                                                                         |
+| 当前版本 | `3.1.7`                                                                                         |
 | 部署平台 | Cloudflare **Workers** / **Pages**                                                              |
 | 协议   | VLESS / Trojan / XHTTP / MASQUE / OpenVPN（家宽）                                  |
 | 订阅格式 | Clash（mihomo / Verge）、sing-box、Karing、v2rayN等                                                   |
