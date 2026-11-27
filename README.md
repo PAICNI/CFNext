@@ -1,6 +1,8 @@
 # CFNext 订阅管理器
 
 > 部署在 Cloudflare Workers / Pages 的代理订阅管理面板，单文件同时实现 VLESS / Trojan / XHTTP 多协议代理与图形化配置：`/UUID`（或自定义路径）进入面板，`/sub` 输出订阅；内置节点优选器、节点数量控制、轮询下发、ECH 加密、落地与出站代理及地区 / 运营商 / IP 版本多维筛选，并新增 **MASQUE / 家宽** 三种节点模式与**前后端分离**部署形态。部署即用，绑定 KV 后改完即生效。
+> ### [✨ 点击查看更新日志](https://github.com/PAICNI/CFNext/blob/main/Update%20Log.md)[✈️ 四年超稳定老牌机场](https://www.beupisp.com/register?code=5vnEa9vV) [✈️ 超高性价比机场](https://scgdzyy.scl168.club/#/quick?code=yF3gCERW)
+
 >
 > #### 获取最新代码及明文代码：[✈ Telegram 交流群](https://t.me/SZ_PAI)[✈ Telegram 发布频道](https://t.me/PaiCNX)
 > 
@@ -11,9 +13,6 @@
 > #### 最新版本部署视频教学：[▶️ 3.0 新版本部署教程](https://www.youtube.com/watch?v=CQ8zvWXkZzA)  面板各项功能设置视频教学：[▶️ 2.0 Worker模式视频使用教程](https://youtu.be/1GCZgdGFsk0)
 > 
 ## 注：仓库不再提供历史明文代码，历史代码请在发布频道内获取，明文代码仅作为开源/二创使用，请勿实例部署；
-> 
-> ### [✨ 点击查看更新日志](https://github.com/PAICNI/CFNext/blob/main/Update%20Log.md)[✈️ 四年超稳定老牌机场](https://www.beupisp.com/register?code=5vnEa9vV) [✈️ 备用超高性价比机场](https://103.73.220.147:8888/#/register?code=luC4csRk)
-
 
 ## 一、项目概述与兼容性
 
