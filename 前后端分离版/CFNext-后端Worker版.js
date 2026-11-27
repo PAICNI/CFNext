@@ -189,7 +189,7 @@ const e = atob,
       "):\\/\\/[^@\\s/]+@(\\[[0-9a-fA-F:]+\\]|[A-Za-z0-9.-]+)(?::(\\d{1,5}))?",
   ),
   s = new RegExp("^" + e("dmxlc3M=") + ":\\/\\/"),
-  i = "3.1.6",
+  i = "3.1.7",
   DEPLOY_EDITION = "\u5206\u79bb\u7248",
   c = "CFN" + "ext",
   l = "luma" + "_auth",
@@ -2324,7 +2324,94 @@ const _NET_LIMITS = Object.freeze({
   raceMax: 6,
   writeQueueItems: 256,
   writeQueueBytes: 4194304,
+  downlinkChunkBytes: 32768,
+  downlinkYieldBytes: 262144,
 });
+const _WS_DOWNLINK_STATES = new WeakMap();
+function _sendWebSocketDownlinkV317(t, e) {
+  const n = e instanceof Uint8Array ? e : new Uint8Array(e || 0);
+  if (!n.byteLength) return Promise.resolve();
+  let r = _WS_DOWNLINK_STATES.get(t);
+  r ||
+    ((r = { tail: Promise.resolve(), error: null, yielded: 0 }),
+    _WS_DOWNLINK_STATES.set(t, r));
+  const o = r.tail.then(async () => {
+    if (r.error) throw r.error;
+    for (let e2 = 0; e2 < n.byteLength; e2 += _NET_LIMITS.downlinkChunkBytes) {
+      if ("number" == typeof t.readyState && t.readyState > 1)
+        throw new Error("WebSocket 已关闭，无法继续发送下行数据");
+      const a = n.subarray(
+          e2,
+          Math.min(e2 + _NET_LIMITS.downlinkChunkBytes, n.byteLength),
+        ),
+        s = t.send(a);
+      s && "function" == typeof s.then && (await s);
+      r.yielded += a.byteLength;
+      if (r.yielded >= _NET_LIMITS.downlinkYieldBytes) {
+        r.yielded = 0;
+        await new Promise((t2) => setTimeout(t2, 0));
+      }
+    }
+  });
+  return (
+    (r.tail = o.catch((t2) => {
+      throw ((r.error = r.error || t2), t2);
+    })),
+    r.tail.catch(() => {}),
+    r.tail
+  );
+}
+function _flushWebSocketDownlinkV317(t) {
+  const e = _WS_DOWNLINK_STATES.get(t);
+  return e ? e.tail : Promise.resolve();
+}
+function _createXhttpDownlinkV317(t, e, n, r) {
+  const o = (e || [])
+      .map((t2) => (t2 instanceof Uint8Array ? t2 : new Uint8Array(t2 || 0)))
+      .filter((t2) => t2.byteLength),
+    a = t.readable.getReader();
+  let s = 0,
+    i = !1;
+  const c = async (e2) => {
+    if (i) return;
+    i = !0;
+    if (e2)
+      try {
+        await a.cancel();
+      } catch (t2) {}
+    try {
+      a.releaseLock();
+    } catch (t2) {}
+    try {
+      t.close();
+    } catch (t2) {}
+  };
+  return new ReadableStream({
+    async pull(t2) {
+      if (n && n()) return (t2.close(), void (await c(!0)));
+      if (s < o.length) return void t2.enqueue(o[s++]);
+      try {
+        const { done: e2, value: n2 } = await a.read();
+        if (e2) return (t2.close(), void (await c(!1)));
+        n2 && n2.byteLength && t2.enqueue(n2);
+      } catch (e2) {
+        (console.warn(
+          "[XHTTP下行] 读取失败:",
+          (e2 && e2.message) || String(e2),
+        ),
+          t2.error(e2),
+          await c(!0));
+      }
+    },
+    async cancel() {
+      try {
+        r && r();
+      } finally {
+        await c(!0);
+      }
+    },
+  });
+}
 function _isTelegramTarget(t) {
   const e = String(t || "")
     .trim()
@@ -2411,7 +2498,7 @@ function Tt(t, n, r, o) {
     s = n.includes(":") && !n.startsWith("[") ? `[${n}]` : n,
     i = encodeURIComponent,
     c = !O.has(Number(r)),
-    l = "/" + t.path + (c ? "?ed=2048" : "");
+    l = "/" + t.path + (c && t.tlsOnly ? "?ed=2048" : "");
   let u = c
     ? e("c2VjdXJpdHk9") +
       "tls&sni=" +
@@ -3945,7 +4032,7 @@ async function he(t, e) {
 function fe(t, n, r, o, a, s, l, u, p, frontGroup) {
   const d = t.host,
     h = "/" + t.path,
-    f = h + "?ed=2048",
+    f = t.tlsOnly ? h + "?ed=2048" : h,
     m = t.alpn
       ? t.alpn
           .split(",")
@@ -4051,7 +4138,7 @@ function fe(t, n, r, o, a, s, l, u, p, frontGroup) {
   T.sort((t, e) => (443 === t.port ? 0 : 1) - (443 === e.port ? 0 : 1));
   const k = "custom" === ((t.optimizer && t.optimizer.subMode) || ""),
     M = T.map((t) => t.name),
-    N = t.homeWan && M.length ? "\u96a7\u9053\u524d\u7f6e" : "",
+    N = t.homeWan && M.length ? "\u5bb6\u5bbd\u524d\u7f6e" : "",
     H = (function (t) {
       if (!t || !t.length) return t;
       const e = t[0],
@@ -4085,7 +4172,7 @@ function fe(t, n, r, o, a, s, l, u, p, frontGroup) {
             "\u76f4\u63a5\u8fde\u63a5",
             "\u5bb6\u5bbd\u81ea\u52a8",
             "\u5bb6\u5bbd\u51fa\u53e3",
-            "\u96a7\u9053\u524d\u7f6e",
+            "\u5bb6\u5bbd\u524d\u7f6e",
             "AI\u81ea\u52a8",
             "AI\u4f18\u9009",
             "\u6d41\u5a92\u4f53\u81ea\u52a8",
@@ -4126,7 +4213,7 @@ function fe(t, n, r, o, a, s, l, u, p, frontGroup) {
         });
       })(t, N),
     ),
-    E = !(!t.homeWan || k);
+    E = !!t.homeWan;
   if ((H.length && T.push(...H), u && u.length)) {
     const t = u.map(function (t) {
       const n = {
@@ -4167,6 +4254,58 @@ function fe(t, n, r, o, a, s, l, u, p, frontGroup) {
   const O = (function (t, n) {
       const r = "https://www.gstatic.com/generate_204",
         o = "https://www.gstatic.com/generate_204";
+      if (E && H.length) {
+        const n = H.map((t) => at(t.name)),
+          o = M.map(at);
+        return (
+          "# ==================== \u76d1\u542c\u5668 ====================\n" +
+          "listeners:\n" +
+          "  - {name: SS-IN, type: " +
+          e("c2hhZG93c29ja3M=") +
+          ", listen: '::', port: 10000, " +
+          e("dWRwOg==") +
+          " true, password: Xf3#Lp9WqZ, cipher: " +
+          e("YWVzLTI1Ni1nY20=") +
+          "}\n" +
+          "  - {name: MIXED-AL, type: mixed, port: 50007, proxy: \u4e00\u952e\u8fde\u63a5}\n\n" +
+          "# ==================== \u7b56\u7565\u7ec4 ====================\n" +
+          e("cHJveHktZ3JvdXA=") +
+          "s:\n" +
+          "  - {name: \u4e00\u952e\u8fde\u63a5, type: select, " +
+          e("cHJveGllcw==") +
+          ": [\u5bb6\u5bbd\u51fa\u53e3, \u76f4\u63a5\u8fde\u63a5]}\n" +
+          "  - {name: \u5bb6\u5bbd\u51fa\u53e3, type: select, " +
+          e("cHJveGllcw==") +
+          ": [\u5bb6\u5bbd\u81ea\u52a8, " +
+          n.join(", ") +
+          ", \u76f4\u63a5\u8fde\u63a5]}\n" +
+          "  - {name: \u5bb6\u5bbd\u81ea\u52a8, type: " +
+          e("dXJsLXRlc3Q=") +
+          ", " +
+          e("cHJveGllcw==") +
+          ": [" +
+          n.join(", ") +
+          "], url: '" +
+          r +
+          "', interval: 600, timeout: 8000, lazy: true, hidden: true, " +
+          e("ZW1wdHktZmFsbGJhY2s=") +
+          ": REJECT}\n" +
+          "  - {name: \u5bb6\u5bbd\u524d\u7f6e, type: " +
+          e("dXJsLXRlc3Q=") +
+          ", " +
+          e("cHJveGllcw==") +
+          ": [" +
+          o.join(", ") +
+          "], url: '" +
+          r +
+          "', interval: 600, timeout: 8000, lazy: true, " +
+          e("ZW1wdHktZmFsbGJhY2s=") +
+          ": REJECT}\n" +
+          "  - {name: \u76f4\u63a5\u8fde\u63a5, type: select, " +
+          e("cHJveGllcw==") +
+          ": [DIRECT]}\n"
+        );
+      }
       if (!n)
         return (
           "# ==================== \u7b56\u7565\u7ec4 ====================\n" +
@@ -4545,24 +4684,25 @@ function fe(t, n, r, o, a, s, l, u, p, frontGroup) {
           a = t.slice().sort((t, e) => (t < e ? -1 : t > e ? 1 : 0)),
           i =
             o && o.length
-              ? `  # ${"\u5bb6\u5bbd\u96a7\u9053\u524d\u7f6e\uff1a"}CF ${"\u4f18\u9009\u8282\u70b9\u81ea\u52a8\u6d4b\u6d3b\uff0c\u5bb6\u5bbd"} openvpn ${"\u7ecf\u6b64\u62e8\u53f7\uff08"}${e("ZGlhbGVy")}-proxy${"\uff09"}\n  - {name: ${"\u96a7\u9053\u524d\u7f6e"}, type: ${e("dXJsLXRlc3Q=")}, ${e("cHJveGllcw==")}: [${o.map(at).join(", ")}], url: 'https://www.gstatic.com/generate_204', interval: 600, lazy: true, hidden: true, ${e("ZW1wdHktZmFsbGJhY2s=")}: REJECT}\n`
+              ? `  # ${"\u5bb6\u5bbd\u524d\u7f6e\uff1a"}CF ${"\u4f18\u9009\u8282\u70b9\u81ea\u52a8\u6d4b\u6d3b\uff0c\u5bb6\u5bbd"} openvpn ${"\u7ecf\u6b64\u62e8\u53f7\uff08"}${e("ZGlhbGVy")}-proxy${"\uff09"}\n  - {name: ${"\u5bb6\u5bbd\u524d\u7f6e"}, type: ${e("dXJsLXRlc3Q=")}, ${e("cHJveGllcw==")}: [${o.map(at).join(", ")}], url: 'https://www.gstatic.com/generate_204', interval: 600, lazy: true, ${e("ZW1wdHktZmFsbGJhY2s=")}: REJECT}\n`
               : "",
           c = `  # ${"\u5bb6\u5bbd\u6a21\u5f0f\uff1a10 \u5206\u949f\u6d4b\u6d3b\u4e00\u6b21\uff0c\u81ea\u52a8\u5207\u5230\u53ef\u7528\u7684\u5bb6\u5bbd\u8282\u70b9"}\n  - {name: ${"\u5bb6\u5bbd\u81ea\u52a8"}, type: ${e("dXJsLXRlc3Q=")}, ${e("cHJveGllcw==")}: [${t.map(at).join(", ")}], url: 'https://www.gstatic.com/generate_204', interval: 600, lazy: true, hidden: true, ${e("ZW1wdHktZmFsbGJhY2s=")}: REJECT}\n`,
           l = `  # ${"\u5bb6\u5bbd\u6a21\u5f0f\uff1a"}VPN Gate OpenVPN ${"\u51fa\u53e3\uff08\u591a\u53f0\u5bb6\u5bbd\u8282\u70b9\uff0c\u7ecf"} ${e("ZGlhbGVy")}-proxy ${"\u96a7\u9053\u62e8\u53f7\uff09"}\n  - {name: ${"\u5bb6\u5bbd\u51fa\u53e3"}, type: select, ${e("cHJveGllcw==")}: [${"\u5bb6\u5bbd\u81ea\u52a8"}, ${a.map(at).join(", ")}, ${"\u76f4\u63a5\u8fde\u63a5"}]}\n`;
-        ((s = s.replace(
-          "# ==================== \u89c4\u5219\u8def\u7531 ====================",
-          i +
-            c +
-            l +
-            "# ==================== \u89c4\u5219\u8def\u7531 ====================",
-        )),
+        (!s.includes("name: \u5bb6\u5bbd\u51fa\u53e3") &&
           (s = s.replace(
-            "  - MATCH,\u4e00\u952e\u8fde\u63a5",
-            "  # \u5bb6\u5bbd\u6a21\u5f0f\uff1aVPN Gate \u76f8\u5173\u6d41\u91cf\u8d70\u5bb6\u5bbd\u51fa\u53e3\uff08OpenVPN \u7ecf CF \u96a7\u9053\uff09\n  - DOMAIN-SUFFIX,vpngate.net,\u5bb6\u5bbd\u51fa\u53e3\n" +
-              (r
-                ? "  - MATCH,\u5bb6\u5bbd\u51fa\u53e3"
-                : "  - MATCH,\u4e00\u952e\u8fde\u63a5"),
+            "# ==================== \u89c4\u5219\u8def\u7531 ====================",
+            i +
+              c +
+              l +
+              "# ==================== \u89c4\u5219\u8def\u7531 ====================",
           )));
+        s = s.replace(
+          "  - MATCH,\u4e00\u952e\u8fde\u63a5",
+          "  # \u5bb6\u5bbd\u6a21\u5f0f\uff1aVPN Gate \u76f8\u5173\u6d41\u91cf\u8d70\u5bb6\u5bbd\u51fa\u53e3\uff08OpenVPN \u7ecf CF \u96a7\u9053\uff09\n  - DOMAIN-SUFFIX,vpngate.net,\u5bb6\u5bbd\u51fa\u53e3\n" +
+            (r
+              ? "  - MATCH,\u5bb6\u5bbd\u51fa\u53e3"
+              : "  - MATCH,\u4e00\u952e\u8fde\u63a5"),
+        );
       }
       return (function (t, n) {
         try {
@@ -4870,7 +5010,7 @@ async function me(t, e = 100, n = 300, r = !1, o = !0, s = !1) {
           // 再把精确节点数调到 1000，仍会复用首次只解析 200 条的缓存。
           // schema 标记同时淘汰旧版本中已丢失自定义名称的缓存。
           const i =
-              "url:v316-custom-names:" +
+              "url:v317-custom-names:" +
               t +
               (r ? "|rf" : "") +
               (o ? "" : "|raw") +
@@ -5811,7 +5951,7 @@ async function ge(t, n, a, s, i, c, l) {
       "random" === b
         ? Object.assign({}, t.filter, { region: "all" })
         : t.filter,
-    D = !(!v || "custom" === b),
+    D = !!v,
     Z = String(t.mode || "").toLowerCase();
   let _ = null;
   if (e("bWFzcXVl") === Z) {
@@ -5890,7 +6030,7 @@ async function ge(t, n, a, s, i, c, l) {
                 t,
                 e,
                 443,
-                "\u96a7\u9053\u524d\u7f6e-" +
+                "\u5bb6\u5bbd\u524d\u7f6e-" +
                   String(r.length + 1).padStart(2, "0"),
               ),
             ));
@@ -6073,8 +6213,8 @@ async function ge(t, n, a, s, i, c, l) {
           ($ ? "\u5bb6\u5bbd" : "MASQUE") +
           " \u6a21\u5f0f\uff1a\u672c\u8ba2\u9605\u683c\u5f0f\u4e0d\u652f\u6301\u8be5\u6a21\u5f0f\u7684\u539f\u751f\u8282\u70b9\uff0c\u672a\u4e0b\u53d1 Worker \u8282\u70b9\u3002\u8bf7\u4f7f\u7528 Clash/Mihomo \u517c\u5bb9\u683c\u5f0f\u3002\n",
       };
-    // 家宽模式必须留着「隧道前置」节点：家宽 openvpn 靠 dialer-proxy 经它拨号，
-    // 订阅里的「隧道前置」代理组也是拿这批节点的名字建的。此前这里把节点整表清空，
+    // 家宽模式必须留着「家宽前置」节点：家宽 openvpn 靠 dialer-proxy 经它拨号，
+    // 订阅里的「家宽前置」代理组也是拿这批节点的名字建的。此前这里把节点整表清空，
     // 前置节点跟着一起没了，客户端只看得到家宽节点、没有 CF 前置，openvpn 也拨不出去。
     // 非自定义订阅下 L 早被前置构造替换成 3 个前置节点，自定义订阅保留用户自己的节点，
     // 两种都只把额度监控那个假域名节点剔掉（L 里存的是 URI 字符串，直接按串判）。
@@ -6373,7 +6513,9 @@ function Re(t, n, r, o, a = {}) {
             ),
           )))
       : (u += "&" + e("dHlwZT13cw==")),
-    (u += "&path=" + l("/" + t.path + (!p && c ? "?ed=2048" : ""))),
+    (u +=
+      "&path=" +
+      l("/" + t.path + (!p && c && t.tlsOnly ? "?ed=2048" : ""))),
     t.alpn &&
       (u +=
         "&" +
@@ -6403,6 +6545,7 @@ function ke(t) {
 function Me(t, n, _rb, _nr) {
   const r = t.host,
     o = "/" + t.path,
+    _ed = !!t.tlsOnly,
     a = t.alpn
       ? t.alpn
           .split(",")
@@ -6441,15 +6584,17 @@ function Me(t, n, _rb, _nr) {
         g =
           e("eGh0dHA=") === h
             ? { type: e("eGh0dHA="), mode: e("c3RyZWFtLW9uZQ=="), path: o }
-            : d
-              ? {
-                  type: "ws",
-                  path: o,
-                  max_early_data: 2048,
-                  early_data_header_name: "Sec-WebSocket-Protocol",
-                  headers: { Host: r },
-                }
-              : { type: "ws", path: o, headers: { Host: r } };
+            : {
+                type: "ws",
+                path: o,
+                ...(d && _ed
+                  ? {
+                      max_early_data: 2048,
+                      early_data_header_name: "Sec-WebSocket-Protocol",
+                    }
+                  : {}),
+                headers: { Host: r },
+              };
       return p
         ? {
             type: e("dHJvamFu"),
@@ -7205,11 +7350,7 @@ export default {
                   _q = [],
                   _qb = 0,
                   _drain = !1;
-                const d = (t) => {
-                    try {
-                      a.send(t);
-                    } catch (t) {}
-                  };
+                const d = (t) => _sendWebSocketDownlinkV317(a, t);
                 // ---- 统一拆除 / 有界写入队列 / 连接代际 ----
                 const _close = (t, e, n) => {
                     if (_closed) return;
@@ -7359,7 +7500,7 @@ export default {
                     !p &&
                       m &&
                       2 !== f.command &&
-                      ((p = !0), d(new Uint8Array([0, 0])));
+                      ((p = !0), await d(new Uint8Array([0, 0])));
                     const g = Ge(
                       l.byteLength > f.headerLength
                         ? l.subarray(f.headerLength)
@@ -7482,7 +7623,7 @@ export default {
                               (m.set(t, g), (g += t.byteLength));
                             return m;
                           })(t);
-                          e && d(e);
+                          e && (await d(e));
                         }
                       } catch (t) {}
                       _close(!0, 1e3);
@@ -7500,28 +7641,41 @@ export default {
                       (i = y.writable.getWriter()),
                       y._preamble &&
                         y._preamble.byteLength > 0 &&
-                        d(y._preamble),
+                        (await d(y._preamble)),
                       l &&
                         l.byteLength > f.headerLength &&
                         _push(l.subarray(f.headerLength), !0),
                       (l = null),
                       (_reader = y.readable.getReader()),
                       (async function (t, e, n, o) {
+                        let r = null;
                         try {
                           for (;;) {
-                            const { done: n, value: r } = await t.read();
-                            if (n) break;
+                            const { done: n2, value: r2 } = await t.read();
+                            if (n2) break;
                             if (!o()) break;
-                            e(r);
+                            await e(r2);
                           }
-                        } catch (t) {}
+                          await _flushWebSocketDownlinkV317(a);
+                        } catch (t2) {
+                          r = t2;
+                          console.warn(
+                            "[WebSocket下行] 转发失败:",
+                            (t2 && t2.message) || String(t2),
+                          );
+                        }
                         try {
-                          n && n();
-                        } catch (t) {}
+                          n && n(r);
+                        } catch (t2) {}
                       })(
                         _reader,
                         d,
-                        () => _close(!0, 1e3),
+                        (t2) =>
+                          _close(
+                            !0,
+                            t2 ? 1011 : 1e3,
+                            t2 ? (t2 && t2.message) || String(t2) : "",
+                          ),
                         () => !_closed && _myGen === _gen,
                       ));
                   },
@@ -7643,33 +7797,12 @@ export default {
                         await s.close();
                       } catch (t) {}
                     })());
-                  const i = new ReadableStream({
-                    async start(t) {
-                      (t.enqueue(new Uint8Array([0, 0])),
-                        a._preamble &&
-                          a._preamble.byteLength > 0 &&
-                          t.enqueue(a._preamble));
-                      const e = a.readable.getReader();
-                      try {
-                        for (;;) {
-                          if (_aborted) break;
-                          const { done: n, value: r } = await e.read();
-                          if (n) break;
-                          if (_aborted) break;
-                          t.enqueue(r);
-                        }
-                      } catch (t) {}
-                      try {
-                        t.close();
-                      } catch (t) {}
-                      try {
-                        a.close();
-                      } catch (t) {}
-                    },
-                    cancel() {
-                      _abortX();
-                    },
-                  });
+                  const i = _createXhttpDownlinkV317(
+                    a,
+                    [new Uint8Array([0, 0]), a._preamble],
+                    () => _aborted,
+                    _abortX,
+                  );
                   return new Response(i, {
                     status: 200,
                     headers: {
