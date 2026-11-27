@@ -1,158 +1,74 @@
-# CFNext 订阅管理器
+> 部署在 Cloudflare Workers / Pages 的单文件代理面板，代码以 `CFAPEX_OBF_V1` 混淆形态发布。`/<A>` 进入图形化面板，`/s/<HMAC>` 输出订阅；同时支持 VLESS / Trojan / XHTTP 三种协议、地区优选与按地区中继、WebSocket / stream-one 两种承载方式，可用 KV 或 Cache API 保存配置，不绑定 KV 也能运行。
 
-> 部署在 Cloudflare Workers / Pages 的代理订阅管理面板，单文件同时实现 VLESS / Trojan / XHTTP 多协议代理与图形化配置：`/UUID`（或自定义路径）进入面板，`/sub` 输出订阅；内置节点优选器、节点数量控制、轮询下发、ECH 加密、落地与出站代理及地区 / 运营商 / IP 版本多维筛选，并新增 **MASQUE / 家宽** 三种节点模式与**前后端分离**部署形态。部署即用，绑定 KV 后改完即生效。
-> ### [✨ 点击查看更新日志](https://github.com/PAICNI/CFNext/blob/main/Update%20Log.md)[✈️ 四年超稳定老牌机场](https://www.beupisp.com/register?code=5vnEa9vV) [✈️ 超高性价比机场](https://scgdzyy.scl168.club/#/quick?code=yF3gCERW)
-
->
-> #### 获取最新代码及明文代码：[✈ Telegram 交流群](https://t.me/SZ_PAI)[✈ Telegram 发布频道](https://t.me/PaiCNX)
-> 
-> #### 一键部署/优选/上报/管理工具：[✨ Next Kit 优选管理工具](https://github.com/PAICNI/Next_Kit)
-> 
-> #### 订阅开发者频道，支持开发者：[📺️ 我的 YouTube频道](https://www.youtube.com/@PAI_CN)
-> 
-> #### 最新版本部署视频教学：[▶️ 3.0 新版本部署教程](https://www.youtube.com/watch?v=CQ8zvWXkZzA)  面板各项功能设置视频教学：[▶️ 2.0 Worker模式视频使用教程](https://youtu.be/1GCZgdGFsk0)
-> 
-## 注：仓库不再提供历史明文代码，历史代码请在发布频道内获取，明文代码仅作为开源/二创使用，请勿实例部署；
+> #### [✈️ 超高性价比机场](https://d222.d222.xyz/register?code=rc9pidAK)  
+> #### 获取最新代码及明文代码：> [✈️ Telegram 交流群](https://t.me/ROTOGE))   [✈️ Telegram 发布频道](https://t.me/ROTOGEGE))
+> #### 订阅开发者频道，支持开发者：[📺 YouTube 频道](https://www.youtube.com/@SHITOUGE))  
 
 ## 一、项目概述与兼容性
 
-| 项    | 内容                                                                                              |
-| ---- | ----------------------------------------------------------------------------------------------- |
-| 当前版本 | `3.1.6`                                                                                         |
-| 部署平台 | Cloudflare **Workers** / **Pages**                                                              |
-| 协议   | VLESS / Trojan / XHTTP / MASQUE / OpenVPN（家宽）                                  |
-| 订阅格式 | Clash（mihomo / Verge）、sing-box、Karing、v2rayN等                                                   |
-| 存储   | Cloudflare KV（绑定变量名统一为 `K`）                                                                     |
-| 客户端  | Worker模式三协议支持/理论支持所有客户端，MASQUE模式支持Clash Meta 系内核的客户端（Clash Verge / Mihomo Party / Stash 等） |
+| 项 | 内容 |
+|---|---|
+| 当前版本 | 1.6 |
+| 部署平台 | Cloudflare Workers（也可作为 Pages `_worker.js`） |
+| 协议 | VLESS / Trojan / XHTTP（stream-one） |
+| 承载 | WebSocket（`/`、`/rp/XX`、`/&rp=XX`）、XHTTP POST（`/xhttp`、`/xhttp/rp/XX`） |
+| 订阅格式 | Clash / mihomo、sing-box、Surge、Quantumult X、Karing / Hiddify、v2rayN、URI 等，按 UA 自动识别 |
+| 存储 | KV 绑定名 `K`；无 KV 时回落 Cache API |
+| 客户端 | Clash Verge / Mihomo Party / Stash、sing-box、v2rayN、Shadowrocket、Surge、Quantumult X 等 |
 
 ## 二、主要功能
 
-| #  | 功能               | 说明                                  |
-| -- | ---------------- | ----------------------------------- |
-| 1  | 图形化面板            | `/自定义路径` 进入，玻璃拟态，深 / 浅双主题           |
-| 2  | 四运行模式            | Worker / MASQUE / 家宽，一键切换    |
-| 3  | 节点优选             | 内置优选源，地区 / 运营商 / IP 版本多维筛选          |
-| 4  | 节点数量控制           | `nodeLimitCount` 默认 300，可调          |
-| 5  | 轮询下发             | `preferredIPs` 多 IP 轮换，均衡负载         |
-| 6  | ECH 加密           | SNI 隐蔽，抗 SNI 阻断                     |
-| 7  | 落地与出站代理          | `PROXYIP` / 出站代理 / 反代落地             |
-| 8  | 前置节点             | `warpFront` 链式拨号 |
-| 9  | MASQUE 凭据 | 自动注册、自动续用，无需手动填                     |
-| 10 | 多后端管理            | 前后端分离版专属：多后端聚合 / 选择下发               |
-| 11 | 反滥用加固            | 指纹消隐、限流、反扫描兜底页、字节差异化                |
-| 12 | Telegram 用量通知    | 每日用量推送（可选）                          |
-| 13 | 备份与恢复            | 配置一键导入 / 导出                         |
+| # | 功能 | 说明 |
+|---|---|---|
+| 1 | 图形化面板 | `/<A>` 进入，浅 / 深双主题；含概览、节点列表、自定义优选 IP、自定义 Proxy IP、自定义出站 IP、设置、关于 |
+| 2 | 三协议下发 | VLESS、Trojan 走 WS；XHTTP 用 stream-one，单次 POST 完成上下行，不需 Durable Object |
+| 3 | 多格式订阅 | 自动识别客户端，也可 `?format=yaml\|clash\|singbox\|surge\|quanx\|karing\|base64\|v2ray\|uri` 指定 |
+| 4 | 协议 / IP 筛选 | `?protocol=vless\|trojan\|xhttp\|both\|all`、`?families=ipv4\|ipv6`、`?limit=1-1000` |
+| 5 | 节点池 | 内置优选 IP 列表，叠加 BestCF 按地区列表（US / JP / SG / KR / HK / CA）；支持纯文本、CSV、JSON 输入与地区标签解析 |
+| 6 | 地区选路 | `/rp/JP`、`/&rp=US`、`/xhttp/rp/HK` 等路径指定地区；HK / JP / US / SG / KR / CA 带内置地区 Proxy IP 池 |
+| 7 | 出站代理 | 支持 direct、socks5、http、https、ss（AEAD），`auto` 失败回退 / `only` 强制走出口，可用 `OUTBOUND_PORTS` 限制目标端口 |
+| 8 | 地区识别 | ip.sb / ipwho.is 查询、机房码与中文地区映射、离线样本兜底；明确标注为归属地或来源标记，不是出口实测 |
+| 9 | 健康检查 | 节点可用性缓存、握手失败退避、多 DNS 源解析、gstatic 204 探测，面板可导出当前下发节点 |
+| 10 | 鉴权与限流 | HMAC 签名的 24 小时面板 Cookie、HMAC 派生订阅路径、API Origin / X-Req 校验、按 IP 与 UUID 限流、未命中路径回落欢迎页 |
 
-## 三、代码形态与版本
+## 三、部署说明
 
-当前代码共 **六种形态** 各形态代码部署方式如下：
+1. 创建 Cloudflare Worker，把本 `.js` 文件内容粘贴进在线编辑器或通过 Wrangler 部署。
+2. 设置环境变量 **`A`**（必填）：它既是面板入口路径，也是访问口令，建议用长随机字符串。
+3. 可选：创建 KV 命名空间并绑定变量名 **`K`**；不绑定则使用 Cache API 存储。
+4. 可选设置 `PROXYIP`、`OUTBOUND_PORTS`、`TROJAN`、`TROJAN_PASSWORD`、`XHTTP`。
+5. 访问 `https://<域名>/<A>` 进入面板，在面板内设置 UUID、节点池、出站和背景；订阅地址会从面板中读取。
 
-| 形态        | 文件名称                         | 部署目标        | 说明                                       |
-| --------- | ---------------------------- | ----------- | ---------------------------------------- |
-| 单文件·明文版   | `CFNext-明文版.js`       | Worker      | 面板 + 后端一体，源码可读，**仅供阅读 / 二次开发，不建议直接部署**   |
-| 单文件·小说混淆版 | `CFNext-小说混淆版.js`     | Worker      | 面板 + 后端一体，正文嵌入语料、占比约 66%，体积最大            |
-| 单文件·Pages | `CFNext-小说混淆Pages版.zip` | Pages（高级模式） | 单文件混淆版打包为 `_worker.js`，走 Pages 通道        |
-| 分离版·后端    | `CFNext-后端Worker版.js` | Worker      | 纯节点 / 订阅 / `/api/*`，**无面板、无登录**          |
-| 分离版·前端    | `CFNext-前端Pages版.zip` | Pages（高级模式） | 面板 UI + 登录 + 多后端管理 + 聚合下发                |
+> 注意：`A` 一旦变化，面板入口、UUID 派生值和订阅地址都会随之变化。
 
-> **前后端分离版**：前端 Pages 负责面板 / 登录 / 多后端（可跨账户），后端 Wo*rker 只存参数、生成订阅；前端把 `/<入口>/api/*`、`/<入口>/sub/*` 映射到后端并注入 API 密钥。后端不暴露任何独立入口，只能经前端访问*。  
-> **单文件版**：面板与后端一体，一次部署即用，无多后端管理模块。
+## 四、环境变量
 
-## 四、部署说明
+| 变量 | 值 | 说明 |
+|---|---|---|
+| `A` | 随机字符串 | **必填**，面板入口 `/<A>` 与口令；也是 UUID 派生和订阅 HMAC 的密钥 |
+| `K` | KV 命名空间 | 可选，绑定名必须为 `K`；缺省时用 Cache API |
+| `PROXYIP` | 地址 / 域名 | 自定义默认 Proxy IP |
+| `OUTBOUND_PORTS` | 端口列表 | 目标端口白名单，格式错误会拒绝连接 |
+| `TROJAN` | `0` | 设为 `0` 禁用 Trojan 协议 |
+| `TROJAN_PASSWORD` | 字符串 | 自定义 Trojan 密码，缺省回退到 UUID |
+| `XHTTP` | `0` | 设为 `0` 禁用 XHTTP；未设置 `A` 时 XHTTP 不可用 |
 
-### Worker 部署
+## 五、订阅与选路
 
-1. 登录 Cloudflare Dashboard → Workers 和 Pages → 创建 → 创建 Worker。
-2. 把对应 `.js` 文件内容粘贴进在线编辑器（或通过 API / Wrangler 部署）。
-3. 绑定 KV：创建 KV 命名空间，绑定变量名填 **`K`**。
-4. 设置环境变量（见下表，仅填必填项）。
-5. 部署，访问 `https://<名称>.<子域>.workers.dev/<入口>` 进入面板。
+- 面板地址：`/<A>`；面板 API：`/<A>/api/*`。
+- 订阅地址：`/s/<HMAC-SHA256(A, "CFAPEX subscription v1")>`，末尾加 `/clash` 输出 Clash 格式。
+- 地区入口：`/rp/JP`、`/&rp=US`；XHTTP 地区入口：`/xhttp/rp/HK`。
+- 默认 UUID 由 `A` 经 SHA-256 确定性派生，也可在面板中替换为自定义 UUID。
 
-### Pages 部署
+## 六、安全与容错
 
-1. 创建 Pages 项目（高级模式 / 直接上传）。
-2. 上传 `_worker.js`（分离版前端或单文件 Pages）。
-3. 绑定 KV：变量名 **`K`**（生产 + 预览环境）。
-4. 设置环境变量（仅填必填项）。
-5. **注意顺序**：先建项目 → 设环境变量 → 绑定 KV → **最后部署**（绑定与环境变量只对之后新建的部署生效）。
+- 面板会话 Cookie 用 HMAC-SHA-256 签名，有效期 24 小时；API 校验 Origin 与请求标识。
+- 优选池地址拉取会拦截私网地址、用户名密码、过多跳转与超大响应。
+- WebSocket 按 IP / UUID 做并发与频率限制，上下行各设 128 MiB 上限；XHTTP 上传缓冲限制 64 KiB。
+- 中继前检查 TLS ClientHello，握手失败按指数退避冷却；节点可用性结果进程内缓存。
 
-### 登录与访问
-
-- 入口路径由环境变量 `L`（等价 `login`）决定，例如 `L=admin` ⇒ 面板在 `/admin`。
-- 首次访问面板会进入 **SETUP 页强制设置管理密码**（密码保存在 KV 中，之后可在面板内修改）。
-- 密码也可用环境变量 `ADMIN` 强制覆盖（设置后面板内不可改）。
-- 订阅地址为 `/<入口>/sub/clash|singbox|karing`，**无需登录**（客户端不带 cookie）。
-
-## 五、环境变量与配置变量
-
-> 未列出的变量均非必填，可留空。
-
-### 5.1 基础（单文件版 / 分离版通用）
-
-| 变量      | 值         | 说明                            |
-| ------- | --------- | ----------------------------- |
-| `L`     | `admin` 等 | 面板入口路径（等价 `login`）。**必填**     |
-| `K`     | —         | KV 命名空间绑定（绑定变量名就是 `K`）。**必填** |
-| `ADMIN` | 密码        | 强制覆盖管理密码（留空则面板内首次设置）          |
-| `U`     | UUID      | 自定义 UUID，仅作兜底（KV 中的 uuid 优先）  |
-
-### 5.2 分离版专用
-
-| 变量    | 值  | 说明                                   |
-| ----- | -- | ------------------------------------ |
-| `API` | 密钥 | 后端共享密钥（前端注入 `X-CF-Api` 时校验）。**后端必填** |
-
-### 5.3 MASQUE
-
-| 变量                 | 值          | 说明                                 |
-| ------------------ | ---------- | ---------------------------------- |
-| `MASQUE_ENDPOINTS` | `IP:端口` 列表 | 覆盖 MASQUE 端点                       |
-| `MASQUE_SNI`       | 域名         | MASQUE SNI（默认 `www.microsoft.com`） |
-
-### 5.4 面板配置项（保存于 KV，面板内即可修改）
-
-| 配置项                  | 说明                                 |
-| -------------------- | ---------------------------------- |
-| `mode`               | 运行模式：worker / masque / home |
-| `masqueEps`          | MASQUE 端点（一行一个，按顺序尝试）              |
-| `nodeLimitCount`     | 节点数量上限（默认 300）                     |
-| `preferredIPs`       | 优选 IP（可带国家码 / 端口 / 标签）             |
-| `subUrl` / `path`    | 订阅路径 / 节点路径段                       |
-| `host`               | 自定义优选域名                            |
-| `tgToken` / `tgChat` | Telegram 用量通知                      |
-
-## 六、订阅模式与优选
-
-### 6.1 订阅模式
-
-| 模式       | 说明                                            |
-| -------- | --------------------------------------------- |
-| `worker` | 下发 VLESS/Trojan/XHTTP 节点（默认 300 个）            |
-| `masque` | 下发 MASQUE 节点（28 个端点，走 QUIC/UDP-443）           |
-| `home`   | 下发家宽节点（VPN Gate OpenVPN + 自定义证书）              |
-
-### 6.2 订阅地址
-
-- `/<入口>/sub/clash` → Clash 订阅
-- `/<入口>/sub/singbox` → sing-box 订阅
-- `/<入口>/sub/karing` → Karing 订阅
-- `/<入口>/sub?c=<格式>` → 面板预览用
-
-### 6.3 地区与命名
-
-节点名含地区标签（如 `CFNext-·1`），`preferredIPs` 支持国家码前缀、端口、`#标签` 后缀与多源逗号分隔。
-
-## 七、性能优化与安全
-
-- 订阅结果进程内缓存 60 秒，空值输出与旧版逐字节一致。
-- `/sub` 反滥用限流（同 IP 60 秒内第 31 次起静默回欢迎页）。
-- 反扫描：未匹配路径统一返回同一份欢迎页，字节一致、零提示。
-- 指纹消隐：能力词消隐，用户身份+字节双随机差异化。
-- 健康检查统一走 `https://www.gstatic.com/generate_204`，主组补 `expected-status: 204`。
-- `cpuLimit` 默认关闭；Free 计划单请求硬上限 10ms。
-
-## 八、致谢
-
+## 七、致谢
+- 感谢 [CFNext](https://github.com/PAICNI/CFNext/) 提供的滥用解决思路；
 - 感谢 [cmliu/edgetunnel](https://github.com/cmliu/edgetunnel) 等 Cloudflare Worker 代理项目。
 - 感谢 [byJoey/CFnew](https://github.com/byJoey/cfnewl) 。
 - 感谢 mihomo / sing-box 社区与 MASQUE 协议的公开实现。
